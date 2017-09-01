@@ -8,15 +8,29 @@ from .pip_hash import pip_hash
 
 def pif():
     p = ArgumentParser()
-    p.add_argument('dist', help='distribution name')
-    args = p.parse_args()
+    sp = p.add_subparsers(title='commands', dest='command')
 
+    see = sp.add_parser('see')
+    see.add_argument('dist', help='distribution name')
+
+    check = sp.add_parser('check')
+    check.add_argument('path', help='project path')
+
+    args = p.parse_args()
+    
+    if args.command == 'see':
+        do_see(args)
+    elif args.command == 'check':
+        do_check(args)
+    
+def do_see(args):
     d = Dist(args.dist)
 
     print("PyPI")
     do_pip(d)
     print("Conda")
     do_conda(d)
+
 
 
 def do_pip(d):
