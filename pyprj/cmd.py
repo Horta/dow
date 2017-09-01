@@ -3,8 +3,8 @@ from __future__ import unicode_literals
 import re
 from argparse import ArgumentParser
 from distutils.version import StrictVersion
-
-import requests
+from .internet import internet_content, absolute_url
+from .pip_hash import pip_hash
 
 
 def pipv():
@@ -16,15 +16,25 @@ def pipv():
     d.fetch_pip_simple_html()
     d.pip_simple_clean_html()
 
-    versions = d.versions()
+    fnvers = d.filename_versions()
+    fnvers = sort_filename_versions(fnvers)
+    
+    ftypes = ['source', 'wheel']
 
+    latest = {t: fnvers[t][-1][0] for t in ftypes}
+
+    source_filename = fnvers['source'][-1][1]
+    
+    print("Source:", latest['source'], d.pip_hash(source_filename))
+    print(" Wheel:", latest['wheel'])
+
+
+def sort_filename_versions(fnvers):
     types = ['wheel', 'source']
     for t in types:
-        versions[t].sort(key=StrictVersion)
+        fnvers[t].sort(key=lambda x: StrictVersion(x[0]))
 
-    latest = {t: versions[t][-1] for t in types}
-    print(latest)
-
+    return fnvers
 
 def parse_wheel_filename(filename):
     expr = r"^(.*)-(.*)(-\d.*)?-(.*)-(.*)-(.*)\.whl$"
@@ -59,32 +69,42 @@ class Dist(object):
         return "https://pypi.python.org/simple/%s/" % self.dist_name
 
     def pip_simple_clean_html(self):
-        self._html = re.sub(r".*h1>", "", self._html)
-        self._html = re.sub(r"<[^>]*>", "", self._html)
-        self._html = self._html.strip()
+        self._html = self._html
 
     def fetch_pip_simple_html(self):
-        resp = requests.get(self.pip_url)
-        if resp.ok:
-            self._html = resp.text
-        else:
-            msg = "Failure while requesting %s: " % self.pip_url
-            raise RuntimeError(msg + str(resp.status_code))
+        html = internet_content(self.pip_url)
+        self._html = re.sub(r".*h1>", "", html).strip()
 
-    def versions(self):
+    def filename_versions(self):
         wheel = []
         source = []
 
-        for fn in self.html.split("\n"):
+        for fn in self.clean_html.split("\n"):
             if fn.endswith('whl'):
-                wheel.append(parse_wheel_filename(fn)['version'])
+                wheel.append((parse_wheel_filename(fn)['version'], fn))
             elif fn.endswith('tar.gz'):
-                source.append(parse_source_filename(fn)['version'])
+                source.append((parse_source_filename(fn)['version'], fn))
             else:
                 raise ValueError("Unknown filetype")
 
         return dict(wheel=wheel, source=source)
-
+    
     @property
     def html(self):
         return self._html
+
+    @property
+    def clean_html(self):
+        return re.sub(r"<[^>]*>", "", self._html).strip()
+    
+    def filename_url(self, filename):
+        expr = r"<a href=\"(.*)#md5=.*\" [^>]*>%s</a>" % filename
+        suf = re.search(expr, self.html).group(1)
+        return absolute_url("https://pypi.python.org/simple/{}/{}".format(self.dist_name, suf))
+
+    def file_content(self, filename):
+        return internet_content(self.filename_url(filename), 'content')
+
+    def pip_hash(self, filename):
+        return pip_hash(self.file_content(filename))
+
