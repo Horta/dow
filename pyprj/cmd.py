@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import re
 from argparse import ArgumentParser
 from distutils.version import StrictVersion
-from .internet import internet_content, absolute_url
+from .internet import internet_content, absolute_url, clean_html
 from .pip_hash import pip_hash
 
 
@@ -27,6 +27,17 @@ def pipv():
     
     print("Source:", latest['source'], d.pip_hash(source_filename))
     print(" Wheel:", latest['wheel'])
+
+def condav():
+    p = ArgumentParser()
+    p.add_argument('dist', help='distribution name')
+    args = p.parse_args()
+
+    d = Dist(args.dist)
+    data = d.conda_versions()
+    n = max(len(k) for k in data.keys())
+    for k in sorted(data.keys()):
+        print(' ' * (n - len(k)) + '%s:' % k, data[k])
 
 
 def sort_filename_versions(fnvers):
@@ -59,6 +70,26 @@ def parse_source_filename(filename):
 class Dist(object):
     def __init__(self, name):
         self._name = name
+
+    def conda_versions(self):
+        url = "https://anaconda.org/conda-forge/%s" % self.dist_name
+        
+        c = internet_content(url)
+        c = c.replace('\n', '')
+        
+        m = re.search(r"<ul class=\"list-inline no-bullet\">(.*)</ul>", c)
+        c = m.group(1)
+        i = c.find('</ul>')
+        
+        c = clean_html(c[:i]).strip()
+        c = " ".join(c.split())
+        
+        c = c.split(' ')
+        data = dict()
+        for i in range(len(c)//2):
+            data[c[2 * i]] = c[2 * i + 1].replace('v', '')
+
+        return data
 
     @property
     def dist_name(self):

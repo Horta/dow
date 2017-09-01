@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import re
 import requests
 
 
@@ -18,3 +19,8 @@ def internet_content(url, type_='text'):
         return getattr(resp, type_)
     msg = "Failure while requesting %s: " % url
     raise RuntimeError(msg + str(resp.status_code))
+
+def clean_html(raw_html):
+    cleanr = re.compile('<.*?>')
+    cleantext = re.sub(cleanr, '', raw_html)
+    return cleantext.replace("&nbsp;", "")
