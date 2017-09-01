@@ -1,10 +1,27 @@
 from __future__ import unicode_literals
 
+import subprocess
 import re
+import os
+from os.path import exists
 from argparse import ArgumentParser
 from distutils.version import StrictVersion
-from .internet import internet_content, absolute_url, clean_html
+from .internet import internet_content, absolute_url, clean_html, check_url, extract_urls
 from .pip_hash import pip_hash
+from . import license
+from datetime import datetime
+from setuptools import find_packages
+import rstcheck
+from glob import glob
+
+def printe(msg):
+    from colorama import Fore, Style
+    print(Fore.RED + '\u2717 ' + msg + Style.RESET_ALL)
+
+def printg(msg):
+    from colorama import Fore, Style
+    print(Fore.GREEN + '\u2713 ' + msg + Style.RESET_ALL)
+
 
 def pif():
     p = ArgumentParser()
@@ -16,12 +33,21 @@ def pif():
     check = sp.add_parser('check')
     check.add_argument('path', help='project path')
 
+    create = sp.add_parser('create')
+    create.add_argument('what', help='what')
+    create.add_argument('author', help='author')
+
     args = p.parse_args()
     
     if args.command == 'see':
         do_see(args)
     elif args.command == 'check':
         do_check(args)
+    elif args.command == 'create':
+        do_create(args)
+
+def here():
+    return os.path.abspath(os.curdir)
     
 def do_see(args):
     d = Dist(args.dist)
@@ -31,7 +57,176 @@ def do_see(args):
     print("Conda")
     do_conda(d)
 
+def do_check(args):
+    path = args.path
 
+    if not exists(path):
+        printe("Path %s does not exist." % path)
+    
+    if not os.path.isdir(path):
+        printe("%s is not a folder." % path)
+    
+    opath = os.path.abspath(os.curdir)
+    try:
+        os.chdir(path)
+        data = dict()
+        data['license'] = check_and_get(['LICENSE.txt', 'LICENSE'])
+        data['readme'] = check_and_get(['README.rst', 'README.md'])
+        data['manifest'] = check_and_get(['MANIFEST.in'])
+        data['setup.py'] = check_and_get(['setup.py'])
+        data['setup.cfg'] = check_and_get(['setup.cfg'])
+
+        check_package_exists()
+
+        if data['manifest']:
+            check_manifest(data)
+
+        if data['setup.cfg']:
+            check_setupcfg(data)
+
+        check_init(data)
+        check_pep8()
+        if data['readme']:
+            check_readme_source(data['readme'])
+
+        check_urls()
+    finally:
+        os.chdir(opath)
+
+def do_create(args):
+    dst = here()
+    
+    if args.what == 'license':
+        dst = os.path.join(dst, 'LICENSE.txt')
+        
+
+        if exists(dst):
+            printe("%s already exist." % dst)
+            return
+        
+        c = license.mit(datetime.now().year, args.author)
+
+        with open(dst, 'w') as f:
+            f.write(c)
+
+        printg("License file %s created." % dst)
+
+def check_urls():
+    files = []
+    for ext in ['py', 'rst', 'md', 'txt', 'cfg']:
+        files += glob("./**/*.%s" % ext, recursive=True)
+
+    urlss = dict()
+    for fi in files:
+        with open(fi, 'r') as f:
+            urlss[fi] = extract_urls(f.read())
+
+    for fi in urlss.keys():
+        urls = urlss[fi]
+        ok = [check_url(url) for url in urls]
+        if not all(ok):
+            printe("The following url(s) in " + fi + " seem broken:")
+            print('\n'.join('  ' + u for i, u in enumerate(urls) if not ok[i]))
+
+def check_pep8():
+    p = subprocess.run(['pep8', '.'], stdout=subprocess.PIPE)
+    if p.returncode != 0:
+        printe('PEP8 violations:')
+        msg = p.stdout.decode().strip()
+        print('\n'.join('  ' + i for i in msg.split('\n')))
+
+def check_readme_source(filename):
+    with open(filename, 'r') as f:
+        r = list(rstcheck.check(f.read()))
+    
+    if len(r) > 0:
+        printe("There were some problems with %s:" % filename)
+        print('\n'.join(['  Line %d: %s' % i for i in r]))
+
+def check_init(data):
+    pkgs = find_packages()
+    if len(pkgs) == 0:
+        return
+
+    pkg = pkgs[0]
+    with open(os.path.join(pkg, '__init__.py'), 'r') as f:
+        rows = [r.strip() for r in f.read().split('\n')]
+
+    look_for = ['__name__', '__version__', '__author__', '__author_email__']
+    found = {lf:False for lf in look_for}
+    for r in rows:
+        for lf in look_for:
+            if r.startswith(lf):
+                found[lf] = True
+
+    if not all(found.values()):
+        printe("Could not find " + ', '.join(lk for lk in look_for if not found[lk]))
+
+class Setupcfg(object):
+    def __init__(self, filename):
+        with open(filename, 'r') as f:
+            rows = f.read().split('\n')
+            rows = [r.strip() for r in rows]
+        self._rows = rows
+
+    def exists(self, what):
+        for r in self._rows:
+            if '=' not in r:
+                continue
+            if r.split('=')[0].strip() == what:
+                return True
+        return False
+    
+    def get(self, what):
+        for r in self._rows:
+            if '=' not in r:
+                continue
+            if r.split('=')[0].strip() == what:
+                return r.split('=')[1].strip()
+        return None
+
+def check_setupcfg(data):
+    s = Setupcfg(data['setup.cfg'])
+
+    if data['readme'] and s.exists('description_file'):
+        fn = s.get('description_file')
+        if fn != data['readme']:
+            printe('setup.cfg description_file is pointing to %s instead of %s.' % (fn, data['readme']))
+
+
+def check_manifest(data):
+
+    look_for = [f for f in ['readme', 'license'] if data[f] is not None]
+    found = {lf:False for lf in look_for}
+
+    with open(data['manifest'], 'r') as f:
+        rows = f.read().split('\n')
+    
+    for r in rows:
+        r = r.strip()
+        for lf in found.keys():
+            if r == 'include %s' % data[lf]:
+                found[lf] = True
+
+    if not all(found.values()):
+        v = [f for f in found.keys() if not found[f]]
+        if len(v) == 1:
+            sep  = 'is'
+        else:
+            sep = 'are'
+        whi = ', '.join(data[vi] for vi in v)
+        printe(whi + " %s missing in %s." % (sep, data['manifest']))
+
+def check_package_exists():
+    pkgs = find_packages()
+    if len(pkgs) == 0:
+        printe("No Python package could be found at %s." % here())
+
+def check_and_get(filenames):
+    if not any(exists(f) for f in filenames):
+        printe("Could not find " + ' nor '.join(filenames) + " file(s).")
+    else:
+        return next(f for f in filenames if exists(f))
 
 def do_pip(d):
     fnvers = d.filename_versions()

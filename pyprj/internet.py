@@ -24,3 +24,12 @@ def clean_html(raw_html):
     cleanr = re.compile('<.*?>')
     cleantext = re.sub(cleanr, '', raw_html)
     return cleantext.replace("&nbsp;", "")
+
+def check_url(url):
+    try:
+        return requests.get(url).status_code < 400
+    except requests.exceptions.ConnectionError:
+        return False
+
+def extract_urls(content):
+    return re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', content)
