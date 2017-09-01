@@ -6,16 +6,20 @@ from distutils.version import StrictVersion
 from .internet import internet_content, absolute_url, clean_html
 from .pip_hash import pip_hash
 
-
-def pipv():
+def pif():
     p = ArgumentParser()
     p.add_argument('dist', help='distribution name')
     args = p.parse_args()
 
     d = Dist(args.dist)
-    d.fetch_pip_simple_html()
-    d.pip_simple_clean_html()
 
+    print("PyPI")
+    do_pip(d)
+    print("Conda")
+    do_conda(d)
+
+
+def do_pip(d):
     fnvers = d.filename_versions()
     fnvers = sort_filename_versions(fnvers)
     
@@ -25,19 +29,14 @@ def pipv():
 
     source_filename = fnvers['source'][-1][1]
     
-    print("Source:", latest['source'], d.pip_hash(source_filename))
-    print(" Wheel:", latest['wheel'])
+    print("    Source:", latest['source'], d.pip_hash(source_filename))
+    print("     Wheel:", latest['wheel'])
 
-def condav():
-    p = ArgumentParser()
-    p.add_argument('dist', help='distribution name')
-    args = p.parse_args()
-
-    d = Dist(args.dist)
+def do_conda(d):
     data = d.conda_versions()
     n = max(len(k) for k in data.keys())
     for k in sorted(data.keys()):
-        print(' ' * (n - len(k)) + '%s:' % k, data[k])
+        print('  ' + ' ' * (n - len(k)) + '%s:' % k, data[k])
 
 
 def sort_filename_versions(fnvers):
@@ -71,6 +70,9 @@ class Dist(object):
     def __init__(self, name):
         self._name = name
 
+        self._fetch_pip_simple_html()
+        self._pip_simple_clean_html()
+
     def conda_versions(self):
         url = "https://anaconda.org/conda-forge/%s" % self.dist_name
         
@@ -99,10 +101,10 @@ class Dist(object):
     def pip_url(self):
         return "https://pypi.python.org/simple/%s/" % self.dist_name
 
-    def pip_simple_clean_html(self):
+    def _pip_simple_clean_html(self):
         self._html = self._html
 
-    def fetch_pip_simple_html(self):
+    def _fetch_pip_simple_html(self):
         html = internet_content(self.pip_url)
         self._html = re.sub(r".*h1>", "", html).strip()
 
@@ -115,8 +117,10 @@ class Dist(object):
                 wheel.append((parse_wheel_filename(fn)['version'], fn))
             elif fn.endswith('tar.gz'):
                 source.append((parse_source_filename(fn)['version'], fn))
+            elif fn.endswith('egg'):
+                pass
             else:
-                raise ValueError("Unknown filetype")
+                raise ValueError("Unknown filetype:", fn)
 
         return dict(wheel=wheel, source=source)
     
