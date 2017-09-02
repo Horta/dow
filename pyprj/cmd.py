@@ -18,7 +18,7 @@ from .printf import printe, printg
 from .dist import Dist
 
 
-def pif():
+def pyprj():
     p = ArgumentParser()
     sp = p.add_subparsers(title='commands', dest='command')
 
@@ -33,7 +33,7 @@ def pif():
     create.add_argument('author', help='author')
 
     args = p.parse_args()
-    
+
     if args.command == 'see':
         do_see(args)
     elif args.command == 'check':
@@ -41,24 +41,27 @@ def pif():
     elif args.command == 'create':
         do_create(args)
 
+
 def here():
     return os.path.abspath(os.curdir)
-    
+
+
 def do_see(args):
     d = Dist(args.dist)
 
     do_pip(d)
     do_conda(d)
 
+
 def do_check(args):
     path = args.path
 
     if not exists(path):
         printe("Path %s does not exist." % path)
-    
+
     if not os.path.isdir(path):
         printe("%s is not a folder." % path)
-    
+
     opath = os.path.abspath(os.curdir)
     try:
         os.chdir(path)
@@ -74,17 +77,17 @@ def do_check(args):
     finally:
         os.chdir(opath)
 
+
 def do_create(args):
     dst = here()
-    
+
     if args.what == 'license':
         dst = os.path.join(dst, 'LICENSE.txt')
-        
 
         if exists(dst):
             printe("%s already exist." % dst)
             return
-        
+
         c = license.mit(datetime.now().year, args.author)
 
         with open(dst, 'w') as f:
@@ -100,18 +103,19 @@ def do_pip(d):
     print("PyPI")
     fnvers = d.filename_versions()
     fnvers = sort_filename_versions(fnvers)
-    
+
     ftypes = [v for v in ['source', 'wheel'] if len(fnvers[v]) > 0]
 
     latest = {t: fnvers[t][-1][0] for t in ftypes}
 
     source_filename = fnvers['source'][-1][1]
-    
+
     if 'source' in latest:
         print("    Source:", latest['source'], d.pip_hash(source_filename))
 
     if 'wheel' in latest:
         print("     Wheel:", latest['wheel'])
+
 
 def do_conda(d):
     data = d.conda_versions()
@@ -123,6 +127,7 @@ def do_conda(d):
     n = max(len(k) for k in data.keys())
     for k in sorted(data.keys()):
         print('  ' + ' ' * (n - len(k)) + '%s:' % k, data[k])
+
 
 def sort_filename_versions(fnvers):
     types = ['wheel', 'source']

@@ -12,7 +12,7 @@ class Setupcfg(object):
             if r.split('=')[0].strip() == what:
                 return True
         return False
-    
+
     def get(self, what):
         for r in self._rows:
             if '=' not in r:
