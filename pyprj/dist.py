@@ -1,13 +1,18 @@
 import re
+from .version import is_canonical
 from .pip_hash import pip_hash
-from .internet import internet_content, clean_html
+from .internet import internet_content, clean_html, absolute_url
 
 class Dist(object):
     def __init__(self, name):
         self._name = name
+        self._html = None
 
         self._fetch_pip_simple_html()
-        self._pip_simple_clean_html()
+
+    @property
+    def pypi_exists(self):
+        return self._html is not None
 
     def conda_versions(self):
         url = "https://anaconda.org/conda-forge/%s" % self.dist_name
@@ -16,6 +21,9 @@ class Dist(object):
         c = c.replace('\n', '')
         
         m = re.search(r"<ul class=\"list-inline no-bullet\">(.*)</ul>", c)
+        if m is None:
+            return None
+
         c = m.group(1)
         i = c.find('</ul>')
         
@@ -37,11 +45,11 @@ class Dist(object):
     def pip_url(self):
         return "https://pypi.python.org/simple/%s/" % self.dist_name
 
-    def _pip_simple_clean_html(self):
-        self._html = self._html
-
     def _fetch_pip_simple_html(self):
-        html = internet_content(self.pip_url)
+        try:
+            html = internet_content(self.pip_url)
+        except RuntimeError:
+            return
         self._html = re.sub(r".*h1>", "", html).strip()
 
     def filename_versions(self):
@@ -55,9 +63,13 @@ class Dist(object):
                 source.append((parse_source_filename(fn)['version'], fn))
             elif fn.endswith('egg'):
                 pass
+            elif fn.endswith('zip'):
+                source.append((parse_source_filename(fn)['version'], fn))
             else:
                 raise ValueError("Unknown filetype:", fn)
 
+        wheel = [v for v in wheel if is_canonical(v[0])]
+        source = [v for v in source if is_canonical(v[0])]
         return dict(wheel=wheel, source=source)
     
     @property
@@ -78,3 +90,23 @@ class Dist(object):
 
     def pip_hash(self, filename):
         return pip_hash(self.file_content(filename))
+
+def parse_wheel_filename(filename):
+    expr = r"^(.*)-(.*)(-\d.*)?-(.*)-(.*)-(.*)\.whl$"
+    m = re.match(expr, filename)
+    if m is None:
+        return None
+
+    fields = ['distribution', 'version', 'build', 'python', 'abi', 'platform']
+    return {f: m.group(i + 1) for (i, f) in enumerate(fields)}
+
+
+def parse_source_filename(filename):
+    expr = r"^(.*)-(.*)\.(tar\.gz|zip)$"
+    m = re.match(expr, filename)
+    if m is None:
+        return None
+
+    fields = ['distribution', 'version']
+    return {f: m.group(i + 1) for (i, f) in enumerate(fields)}
+

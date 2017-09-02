@@ -15,6 +15,7 @@ from glob import glob
 from .setupcfg import Setupcfg
 from .prj import Prj
 from .printf import printe, printg
+from .dist import Dist
 
 
 def pif():
@@ -46,9 +47,7 @@ def here():
 def do_see(args):
     d = Dist(args.dist)
 
-    print("PyPI")
     do_pip(d)
-    print("Conda")
     do_conda(d)
 
 def do_check(args):
@@ -95,24 +94,35 @@ def do_create(args):
 
 
 def do_pip(d):
+    if not d.pypi_exists:
+        printe("Not found in PyPI.")
+        return
+    print("PyPI")
     fnvers = d.filename_versions()
     fnvers = sort_filename_versions(fnvers)
     
-    ftypes = ['source', 'wheel']
+    ftypes = [v for v in ['source', 'wheel'] if len(fnvers[v]) > 0]
 
     latest = {t: fnvers[t][-1][0] for t in ftypes}
 
     source_filename = fnvers['source'][-1][1]
     
-    print("    Source:", latest['source'], d.pip_hash(source_filename))
-    print("     Wheel:", latest['wheel'])
+    if 'source' in latest:
+        print("    Source:", latest['source'], d.pip_hash(source_filename))
+
+    if 'wheel' in latest:
+        print("     Wheel:", latest['wheel'])
 
 def do_conda(d):
     data = d.conda_versions()
+    if data is None:
+        printe("Not found in Conda.")
+        return
+
+    print("Conda")
     n = max(len(k) for k in data.keys())
     for k in sorted(data.keys()):
         print('  ' + ' ' * (n - len(k)) + '%s:' % k, data[k])
-
 
 def sort_filename_versions(fnvers):
     types = ['wheel', 'source']
@@ -120,26 +130,3 @@ def sort_filename_versions(fnvers):
         fnvers[t].sort(key=lambda x: StrictVersion(x[0]))
 
     return fnvers
-
-def parse_wheel_filename(filename):
-    expr = r"^(.*)-(.*)(-\d.*)?-(.*)-(.*)-(.*)\.whl$"
-    m = re.match(expr, filename)
-    if m is None:
-        return None
-
-    fields = ['distribution', 'version', 'build', 'python', 'abi', 'platform']
-    return {f: m.group(i + 1) for (i, f) in enumerate(fields)}
-
-
-def parse_source_filename(filename):
-    expr = r"^(.*)-(.*)\.tar\.gz$"
-    m = re.match(expr, filename)
-    if m is None:
-        return None
-
-    fields = ['distribution', 'version']
-    return {f: m.group(i + 1) for (i, f) in enumerate(fields)}
-
-
-
-
