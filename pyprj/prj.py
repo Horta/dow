@@ -1,12 +1,14 @@
-from os.path import exists, join
-from setuptools import find_packages
 import subprocess
-from .internet import extract_urls, check_url
-from .setupcfg import Setupcfg
-import rstcheck
-from .printf import printe, printg
-from glob import glob
 from concurrent.futures import ThreadPoolExecutor
+from glob import glob
+from os.path import exists, join
+
+import rstcheck
+from setuptools import find_packages
+
+from .internet import check_url, extract_urls
+from .printf import printe, printg
+from .setupcfg import Setupcfg
 
 
 def _extract_urls(filename):
@@ -20,7 +22,7 @@ def _extract_urls(filename):
 
 
 class Prj(object):
-    def __init__(self):
+    def __init__(self, ignore_urls):
         data = dict()
         data['license'] = check_get_files(['LICENSE.txt', 'LICENSE'])
         data['readme'] = check_get_files(['README.rst', 'README.md'])
@@ -30,8 +32,8 @@ class Prj(object):
         self._data = data
         self._broken_urls = None
         self._pool = ThreadPoolExecutor()
-        self._find_urls()
-
+        if not ignore_urls:
+            self._find_urls()
 
     def _find_urls(self):
         files = []
@@ -98,9 +100,8 @@ class Prj(object):
         if data['readme'] and s.exists('description_file'):
             fn = s.get('description_file')
             if fn != data['readme']:
-                printe(
-                    'setup.cfg description_file is pointing to %s instead of %s.'
-                    % (fn, data['readme']))
+                msg = 'setup.cfg description_file is pointing to'
+                printe(msg + ' %s instead of %s.' % (fn, data['readme']))
 
     def check_manifest(self):
         if self._data['manifest'] is None:

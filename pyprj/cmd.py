@@ -1,21 +1,25 @@
 from __future__ import unicode_literals
 
-import subprocess
-import re
 import os
-from os.path import exists
+import re
+import subprocess
 from argparse import ArgumentParser
-from distutils.version import StrictVersion
-from .internet import internet_content, absolute_url, clean_html, check_url, extract_urls
-from . import license
 from datetime import datetime
-from setuptools import find_packages
-import rstcheck
+from distutils.version import StrictVersion
 from glob import glob
-from .setupcfg import Setupcfg
-from .prj import Prj
-from .printf import printe, printg
+from os.path import exists
+
+import rstcheck
+from setuptools import find_packages
+
+from . import license
 from .dist import Dist
+from .internet import (
+    absolute_url, check_url, clean_html, extract_urls, internet_content
+)
+from .printf import printe, printg
+from .prj import Prj
+from .setupcfg import Setupcfg
 
 
 def pyprj():
@@ -27,6 +31,11 @@ def pyprj():
 
     check = sp.add_parser('check')
     check.add_argument('path', help='project path')
+    check.add_argument(
+        '--ignore-urls',
+        help='do not check urls',
+        action='store_true',
+        default=False)
 
     create = sp.add_parser('create')
     create.add_argument('what', help='what')
@@ -65,7 +74,7 @@ def do_check(args):
     opath = os.path.abspath(os.curdir)
     try:
         os.chdir(path)
-        prj = Prj()
+        prj = Prj(ignore_urls=args.ignore_urls)
 
         prj.check_package_exists()
         prj.check_manifest()
@@ -73,7 +82,8 @@ def do_check(args):
         prj.check_init()
         prj.check_pep8()
         prj.check_readme_source()
-        prj.check_urls()
+        if not args.ignore_urls:
+            prj.check_urls()
     finally:
         os.chdir(opath)
 

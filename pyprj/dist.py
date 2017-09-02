@@ -1,7 +1,9 @@
+import hashlib
 import re
+
+from .internet import absolute_url, clean_html, internet_content
 from .version import is_canonical
-from .pip_hash import pip_hash
-from .internet import internet_content, clean_html, absolute_url
+
 
 class Dist(object):
     def __init__(self, name):
@@ -16,23 +18,23 @@ class Dist(object):
 
     def conda_versions(self):
         url = "https://anaconda.org/conda-forge/%s" % self.dist_name
-        
+
         c = internet_content(url)
         c = c.replace('\n', '')
-        
+
         m = re.search(r"<ul class=\"list-inline no-bullet\">(.*)</ul>", c)
         if m is None:
             return None
 
         c = m.group(1)
         i = c.find('</ul>')
-        
+
         c = clean_html(c[:i]).strip()
         c = " ".join(c.split())
-        
+
         c = c.split(' ')
         data = dict()
-        for i in range(len(c)//2):
+        for i in range(len(c) // 2):
             data[c[2 * i]] = c[2 * i + 1].replace('v', '')
 
         return data
@@ -71,7 +73,7 @@ class Dist(object):
         wheel = [v for v in wheel if is_canonical(v[0])]
         source = [v for v in source if is_canonical(v[0])]
         return dict(wheel=wheel, source=source)
-    
+
     @property
     def html(self):
         return self._html
@@ -79,17 +81,19 @@ class Dist(object):
     @property
     def clean_html(self):
         return re.sub(r"<[^>]*>", "", self._html).strip()
-    
+
     def filename_url(self, filename):
         expr = r"<a href=\"(.*)#md5=.*\" [^>]*>%s</a>" % filename
         suf = re.search(expr, self.html).group(1)
-        return absolute_url("https://pypi.python.org/simple/{}/{}".format(self.dist_name, suf))
+        return absolute_url(
+            "https://pypi.python.org/simple/{}/{}".format(self.dist_name, suf))
 
     def file_content(self, filename):
         return internet_content(self.filename_url(filename), 'content')
 
     def pip_hash(self, filename):
-        return pip_hash(self.file_content(filename))
+        return hashlib.sha256(self.file_content(filename)).hexdigest()
+
 
 def parse_wheel_filename(filename):
     expr = r"^(.*)-(.*)(-\d.*)?-(.*)-(.*)-(.*)\.whl$"
@@ -109,4 +113,3 @@ def parse_source_filename(filename):
 
     fields = ['distribution', 'version']
     return {f: m.group(i + 1) for (i, f) in enumerate(fields)}
-
