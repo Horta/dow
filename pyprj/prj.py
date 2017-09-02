@@ -1,14 +1,18 @@
+import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
+from distutils.version import StrictVersion
 from glob import glob
 from os.path import exists, join
 
 import rstcheck
+from git import Repo
 from setuptools import find_packages
 
 from .internet import check_url, extract_urls
 from .printf import printe, printg
 from .setupcfg import Setupcfg
+from .version import is_canonical, version_sort
 
 
 def _extract_urls(filename):
@@ -34,6 +38,8 @@ class Prj(object):
         self._pool = ThreadPoolExecutor()
         if not ignore_urls:
             self._find_urls()
+
+        self._repo = Repo('.')
 
     def _find_urls(self):
         files = []
@@ -90,6 +96,32 @@ class Prj(object):
             printe("Could not find " + ', '.join(lk for lk in look_for
                                                  if not found[lk]))
 
+    @property
+    def version(self):
+        pkgs = find_packages()
+        if len(pkgs) == 0:
+            return None
+
+        return _get_init_variable(pkgs[0], 'version')
+
+    def check_version(self):
+
+        branch = self._repo.active_branch
+
+        if branch.name == 'master':
+            tags = [t.name for t in self._repo.tags if is_canonical(t.name)]
+            version_sort(tags)
+            tag_version = tags[-1]
+
+            if StrictVersion(tag_version) > StrictVersion(self.version):
+                msg = "Tag version (%s) is more recent " % tag_version
+                msg += "than the project one (%s)." % self.version
+                printe(msg)
+            elif StrictVersion(tag_version) < StrictVersion(self.version):
+                msg = "Tag version (%s) is not " % tag_version
+                msg += "up-to-date to the project one (%s)." % self.version
+                printe(msg)
+
     def check_setupcfg(self):
         if self._data['setup.cfg'] is None:
             return
@@ -140,3 +172,9 @@ def check_get_files(filenames):
         printe("Could not find " + ' nor '.join(filenames) + " file(s).")
     else:
         return next(f for f in filenames if exists(f))
+
+
+def _get_init_variable(prjname, name):
+    expr = re.compile(r"__%s__ *=[^\"]*\"([^\"]*)\"" % name)
+    data = open(join(prjname, "__init__.py")).read()
+    return re.search(expr, data).group(1)

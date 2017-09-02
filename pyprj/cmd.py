@@ -5,7 +5,6 @@ import re
 import subprocess
 from argparse import ArgumentParser
 from datetime import datetime
-from distutils.version import StrictVersion
 from glob import glob
 from os.path import exists
 
@@ -20,6 +19,7 @@ from .internet import (
 from .printf import printe, printg
 from .prj import Prj
 from .setupcfg import Setupcfg
+from .version import version_sort
 
 
 def pyprj():
@@ -82,6 +82,7 @@ def do_check(args):
         prj.check_init()
         prj.check_pep8()
         prj.check_readme_source()
+        prj.check_version()
         if not args.ignore_urls:
             prj.check_urls()
     finally:
@@ -142,6 +143,6 @@ def do_conda(d):
 def sort_filename_versions(fnvers):
     types = ['wheel', 'source']
     for t in types:
-        fnvers[t].sort(key=lambda x: StrictVersion(x[0]))
+        version_sort(fnvers[t], lambda x: x[0])
 
     return fnvers
