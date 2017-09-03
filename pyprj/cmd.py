@@ -83,6 +83,7 @@ def do_check(args):
         prj.check_pep8()
         prj.check_readme_source()
         prj.check_version()
+        prj.check_setuppy()
         if not args.ignore_urls:
             prj.check_urls()
     finally:

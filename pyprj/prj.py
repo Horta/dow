@@ -4,12 +4,13 @@ from concurrent.futures import ThreadPoolExecutor
 from distutils.version import StrictVersion
 from glob import glob
 from os.path import exists, join
+from hashlib import sha256
 
 import rstcheck
 from git import Repo
 from setuptools import find_packages
 
-from .internet import check_url, extract_urls
+from .internet import check_url, extract_urls, internet_content
 from .printf import printe, printg
 from .setupcfg import Setupcfg
 from .version import is_canonical, version_sort
@@ -48,6 +49,21 @@ class Prj(object):
 
         tasks = ()
         self._broken_urls = self._pool.map(_extract_urls, files, chunksize=10)
+
+    def check_setuppy(self):
+        if self._data['setup.py'] is None:
+            return
+
+        url = "https://raw.githubusercontent.com/limix/setup/master/setup.py"
+        c = internet_content(url, 'content')
+        latest_hash = sha256(c).hexdigest()
+
+        with open('setup.py', 'rb') as f:
+            hash_ = sha256(f.read()).hexdigest()
+
+        if hash_ != latest_hash:
+            printe("setup.py file is not up-to-date." +
+                   " Please, download it from %s." % url)
 
     def check_urls(self):
         for urls in self._broken_urls:
