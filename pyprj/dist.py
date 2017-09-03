@@ -1,4 +1,4 @@
-import hashlib
+from hashlib import sha256
 import re
 
 from .internet import absolute_url, clean_html, internet_content
@@ -68,7 +68,8 @@ class Dist(object):
             elif fn.endswith('zip'):
                 source.append((parse_source_filename(fn)['version'], fn))
             else:
-                raise ValueError("Unknown filetype:", fn)
+                pass
+                #raise ValueError("Unknown filetype:", fn)
 
         wheel = [v for v in wheel if is_canonical(v[0])]
         source = [v for v in source if is_canonical(v[0])]
@@ -83,7 +84,7 @@ class Dist(object):
         return re.sub(r"<[^>]*>", "", self._html).strip()
 
     def filename_url(self, filename):
-        expr = r"<a href=\"(.*)#md5=.*\" [^>]*>%s</a>" % filename
+        expr = r"<a .*href=\"(.*)#md5=.*\" [^>]*>%s</a>" % filename
         suf = re.search(expr, self.html).group(1)
         return absolute_url(
             "https://pypi.python.org/simple/{}/{}".format(self.dist_name, suf))
@@ -92,7 +93,7 @@ class Dist(object):
         return internet_content(self.filename_url(filename), 'content')
 
     def pip_hash(self, filename):
-        return hashlib.sha256(self.file_content(filename)).hexdigest()
+        return sha256(self.file_content(filename)).hexdigest()
 
 
 def parse_wheel_filename(filename):

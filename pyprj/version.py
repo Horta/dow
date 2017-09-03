@@ -1,5 +1,6 @@
 import re
 from distutils.version import StrictVersion
+from distutils.version import LooseVersion
 
 
 def is_canonical(version):
@@ -10,10 +11,10 @@ def is_canonical(version):
 
 def version_sort(versions, key=None):
     if key is None:
-        _key = StrictVersion
+        _key = LooseVersion
     else:
 
         def _key(x):
-            return StrictVersion(key(x))
+            return LooseVersion(key(x))
 
     versions.sort(key=_key)

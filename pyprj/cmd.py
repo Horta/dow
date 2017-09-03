@@ -39,7 +39,10 @@ def pyprj():
 
     create = sp.add_parser('create')
     create.add_argument('what', help='what')
-    create.add_argument('author', help='author')
+    create.add_argument('--author', help='author')
+    create.add_argument('--force', help='force',
+                        action='store_true',
+                        default=False)
 
     args = p.parse_args()
 
@@ -96,7 +99,7 @@ def do_create(args):
     if args.what == 'license':
         dst = os.path.join(dst, 'LICENSE.txt')
 
-        if exists(dst):
+        if not args.force and exists(dst):
             printe("%s already exist." % dst)
             return
 
@@ -106,6 +109,20 @@ def do_create(args):
             f.write(c)
 
         printg("License file %s created." % dst)
+    elif args.what == 'setup.py':
+        dst = os.path.join(dst, 'setup.py')
+
+        if not args.force and exists(dst):
+            printe("%s already exist." % dst)
+            return
+
+        url = "https://raw.githubusercontent.com/limix/setup/master/setup.py"
+        c = internet_content(url)
+
+        with open(dst, 'w') as f:
+            f.write(c)
+
+        printg("setup.py file %s created." % dst)
 
 
 def do_pip(d):
