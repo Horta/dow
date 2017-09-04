@@ -1,3 +1,6 @@
+from .dist import Dist
+from .version import version_sort
+
 def do_see(args):
     d = Dist(args.dist)
 
@@ -35,3 +38,10 @@ def do_conda(d):
     n = max(len(k) for k in data.keys())
     for k in sorted(data.keys()):
         print('  ' + ' ' * (n - len(k)) + '%s:' % k, data[k])
+
+def sort_filename_versions(fnvers):
+    types = ['wheel', 'source']
+    for t in types:
+        version_sort(fnvers[t], lambda x: x[0])
+
+    return fnvers
