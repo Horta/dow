@@ -3,7 +3,7 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from distutils.version import StrictVersion
 from glob import glob
-from os.path import exists, join
+from os.path import exists, join, basename
 from hashlib import sha256
 
 import rstcheck
@@ -18,7 +18,7 @@ from .version import is_canonical, version_sort
 
 def _check_setup_file_uptodate(filename):
     url = "https://raw.githubusercontent.com/limix/setup/master/"
-    url += filename
+    url += basename(filename)
     c = internet_content(url, 'content')
     latest_hash = sha256(c).hexdigest()
 
@@ -43,15 +43,24 @@ def _extract_urls(filename):
 class Prj(object):
     def __init__(self, ignore_urls):
         data = dict()
+        self._pkgname = None
+        self._check_package_exists()
+
         data['license'] = check_get_files(['LICENSE.txt', 'LICENSE'])
         data['readme'] = check_get_files(['README.rst', 'README.md'])
         data['manifest'] = check_get_files(['MANIFEST.in'])
         data['setup.py'] = check_get_files(['setup.py'])
         data['setup.cfg'] = check_get_files(['setup.cfg'])
         data['conftest.py'] = check_get_files(['conftest.py'])
+
+        if self._pkgname is not None:
+            data['_test.py'] = check_get_files(
+                [join(self._pkgname, '_test.py')])
+
         data['requirements.txt'] = check_get_files(['requirements.txt'])
         data['test-requirements.txt'] = check_get_files(
             ['test-requirements.txt'])
+
         self._data = data
         self._broken_urls = None
         self._pool = ThreadPoolExecutor()
@@ -79,6 +88,12 @@ class Prj(object):
             return
 
         _check_setup_file_uptodate(self._data['conftest.py'])
+    
+    def check_testpy(self):
+        if self._data['_test.py'] is None:
+            return
+
+        _check_setup_file_uptodate(self._data['_test.py'])
 
     def check_urls(self):
         for urls in self._broken_urls:
@@ -106,12 +121,10 @@ class Prj(object):
             print('\n'.join(['  Line %d: %s' % i for i in r]))
 
     def check_init(self):
-        pkgs = find_packages()
-        if len(pkgs) == 0:
+        if self._pkgname is None:
             return
 
-        pkg = pkgs[0]
-        with open(join(pkg, '__init__.py'), 'r') as f:
+        with open(join(self._pkgname, '__init__.py'), 'r') as f:
             rows = [r.strip() for r in f.read().split('\n')]
 
         look_for = [
@@ -129,11 +142,10 @@ class Prj(object):
 
     @property
     def version(self):
-        pkgs = find_packages()
-        if len(pkgs) == 0:
+        if self._pkgname is None:
             return None
 
-        return _get_init_variable(pkgs[0], 'version')
+        return _get_init_variable(self._pkgname, 'version')
 
     def check_version(self):
 
@@ -195,10 +207,12 @@ class Prj(object):
             whi = ', '.join(data[vi] for vi in v)
             printe(whi + " %s missing in %s." % (sep, data['manifest']))
 
-    def check_package_exists(self):
+    def _check_package_exists(self):
         pkgs = find_packages()
         if len(pkgs) == 0:
             printe("No Python package could be found at %s." % here())
+
+        self._pkgname = pkgs[0]
 
 
 def check_get_files(filenames):

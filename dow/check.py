@@ -16,12 +16,12 @@ def do_check(args):
         chdir(path)
         prj = Prj(ignore_urls=not args.check_urls)
 
-        prj.check_package_exists()
         prj.check_manifest()
         prj.check_setupcfg()
         prj.check_conftestpy()
         prj.check_init()
         prj.check_pep8()
+        prj.check_testpy()
         prj.check_readme_source()
         prj.check_version()
         prj.check_setuppy()
