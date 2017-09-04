@@ -16,6 +16,20 @@ from .setupcfg import Setupcfg
 from .version import is_canonical, version_sort
 
 
+def _check_setup_file_uptodate(filename):
+    url = "https://raw.githubusercontent.com/limix/setup/master/"
+    url += filename
+    c = internet_content(url, 'content')
+    latest_hash = sha256(c).hexdigest()
+
+    with open(filename, 'rb') as f:
+        hash_ = sha256(f.read()).hexdigest()
+
+    if hash_ != latest_hash:
+        printe("%s file is not up-to-date." % filename +
+               " Please, download it from %s." % url)
+
+
 def _extract_urls(filename):
     with open(filename, 'r') as f:
         urls = extract_urls(f.read())
@@ -34,6 +48,10 @@ class Prj(object):
         data['manifest'] = check_get_files(['MANIFEST.in'])
         data['setup.py'] = check_get_files(['setup.py'])
         data['setup.cfg'] = check_get_files(['setup.cfg'])
+        data['conftest.py'] = check_get_files(['conftest.py'])
+        data['requirements.txt'] = check_get_files(['requirements.txt'])
+        data['test-requirements.txt'] = check_get_files(
+            ['test-requirements.txt'])
         self._data = data
         self._broken_urls = None
         self._pool = ThreadPoolExecutor()
@@ -54,16 +72,13 @@ class Prj(object):
         if self._data['setup.py'] is None:
             return
 
-        url = "https://raw.githubusercontent.com/limix/setup/master/setup.py"
-        c = internet_content(url, 'content')
-        latest_hash = sha256(c).hexdigest()
+        _check_setup_file_uptodate(self._data['setup.py'])
 
-        with open('setup.py', 'rb') as f:
-            hash_ = sha256(f.read()).hexdigest()
+    def check_conftestpy(self):
+        if self._data['conftest.py'] is None:
+            return
 
-        if hash_ != latest_hash:
-            printe("setup.py file is not up-to-date." +
-                   " Please, download it from %s." % url)
+        _check_setup_file_uptodate(self._data['conftest.py'])
 
     def check_urls(self):
         for urls in self._broken_urls:
@@ -156,7 +171,10 @@ class Prj(object):
             return
 
         data = self._data
-        look_for = [f for f in ['readme', 'license'] if data[f] is not None]
+        look_for = [
+            'readme', 'license', 'requirements.txt', 'test-requirements.txt'
+        ]
+        look_for = [f for f in look_for if data[f] is not None]
         found = {lf: False for lf in look_for}
 
         with open(data['manifest'], 'r') as f:

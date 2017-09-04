@@ -19,6 +19,7 @@ def do_check(args):
         prj.check_package_exists()
         prj.check_manifest()
         prj.check_setupcfg()
+        prj.check_conftestpy()
         prj.check_init()
         prj.check_pep8()
         prj.check_readme_source()
