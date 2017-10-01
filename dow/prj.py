@@ -8,6 +8,7 @@ from hashlib import sha256
 
 import rstcheck
 from git import Repo
+from git.exc import InvalidGitRepositoryError
 from setuptools import find_packages
 
 from .internet import check_url, extract_urls, internet_content
@@ -68,7 +69,10 @@ class Prj(object):
         if not ignore_urls:
             self._find_urls()
 
-        self._repo = Repo('.')
+        try:
+            self._repo = Repo('.')
+        except InvalidGitRepositoryError:
+            self._repo = None
 
     def _find_urls(self):
         files = []
@@ -156,10 +160,15 @@ class Prj(object):
 
     def check_version(self):
 
+        if self._repo is None:
+            return
+
         branch = self._repo.active_branch
 
         if branch.name == 'master':
             tags = [t.name for t in self._repo.tags if is_canonical(t.name)]
+            if len(tags) == 0:
+                return
             version_sort(tags)
             tag_version = tags[-1]
 

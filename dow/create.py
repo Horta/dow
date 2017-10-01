@@ -3,6 +3,7 @@ from os.path import exists, join
 from datetime import datetime
 from .internet import internet_content
 from .printf import printe, printg
+from . import license
 
 
 def do_create(args):
