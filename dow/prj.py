@@ -16,7 +16,7 @@ from .setupcfg import Setupcfg
 from .version import is_canonical, version_sort
 
 
-def _check_setup_file_uptodate(filename):
+def _check_uptodate_file(filename):
     url = "https://raw.githubusercontent.com/limix/setup/master/"
     url += basename(filename)
     c = internet_content(url, 'content')
@@ -52,6 +52,7 @@ class Prj(object):
         data['setup.py'] = check_get_files(['setup.py'])
         data['setup.cfg'] = check_get_files(['setup.cfg'])
         data['conftest.py'] = check_get_files(['conftest.py'])
+        data['doc/conf.py'] = check_get_files(['doc/conf.py'])
 
         if self._pkgname is not None:
             data['_test.py'] = check_get_files(
@@ -77,23 +78,29 @@ class Prj(object):
         tasks = ()
         self._broken_urls = self._pool.map(_extract_urls, files, chunksize=10)
 
+    def check_confpy(self):
+        if self._data['doc/conf.py'] is None:
+            return
+
+        _check_uptodate_file(self._data['doc/conf.py'])
+
     def check_setuppy(self):
         if self._data['setup.py'] is None:
             return
 
-        _check_setup_file_uptodate(self._data['setup.py'])
+        _check_uptodate_file(self._data['setup.py'])
 
     def check_conftestpy(self):
         if self._data['conftest.py'] is None:
             return
 
-        _check_setup_file_uptodate(self._data['conftest.py'])
+        _check_uptodate_file(self._data['conftest.py'])
     
     def check_testpy(self):
         if self._data['_test.py'] is None:
             return
 
-        _check_setup_file_uptodate(self._data['_test.py'])
+        _check_uptodate_file(self._data['_test.py'])
 
     def check_urls(self):
         for urls in self._broken_urls:

@@ -18,6 +18,7 @@ def do_check(args):
 
         prj.check_manifest()
         prj.check_setupcfg()
+        prj.check_confpy()
         prj.check_conftestpy()
         prj.check_init()
         prj.check_pep8()

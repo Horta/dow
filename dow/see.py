@@ -1,11 +1,14 @@
 from .dist import Dist
+from .printf import printe
 from .version import version_sort
+
 
 def do_see(args):
     d = Dist(args.dist)
 
     do_pip(d)
     do_conda(d)
+
 
 def do_pip(d):
     if not d.pypi_exists:
@@ -38,6 +41,7 @@ def do_conda(d):
     n = max(len(k) for k in data.keys())
     for k in sorted(data.keys()):
         print('  ' + ' ' * (n - len(k)) + '%s:' % k, data[k])
+
 
 def sort_filename_versions(fnvers):
     types = ['wheel', 'source']
