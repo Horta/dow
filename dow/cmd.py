@@ -22,6 +22,7 @@ from .version import version_sort
 from .check import do_check
 from .see import do_see
 from .create import do_create
+from .update import do_update
 
 
 def dow():
@@ -30,6 +31,9 @@ def dow():
 
     see = sp.add_parser('see')
     see.add_argument('dist', help='distribution name')
+
+    update = sp.add_parser('update')
+    update.add_argument('file', help='file with requirements')
 
     check = sp.add_parser('check')
     check.add_argument('path', help='project path')
@@ -53,4 +57,5 @@ def dow():
         do_check(args)
     elif args.command == 'create':
         do_create(args)
-
+    elif args.command == 'update':
+        do_update(args)
