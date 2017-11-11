@@ -1,3 +1,4 @@
+from __future__ import unicode_literals as _
 from hashlib import sha256
 import re
 
@@ -81,6 +82,8 @@ class Dist(object):
 
     @property
     def clean_html(self):
+        if self._html is None:
+            return ""
         return re.sub(r"<[^>]*>", "", self._html).strip()
 
     def filename_url(self, filename):
