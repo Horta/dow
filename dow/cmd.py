@@ -1,24 +1,7 @@
 from __future__ import unicode_literals
 
-import os
-import re
-import subprocess
 from argparse import ArgumentParser
-from datetime import datetime
-from glob import glob
-from os.path import exists
 
-import rstcheck
-from setuptools import find_packages
-
-from . import license
-from .dist import Dist
-from .internet import (absolute_url, check_url, clean_html, extract_urls,
-                       internet_content)
-from .printf import printe, printg
-from .prj import Prj
-from .setupcfg import Setupcfg
-from .version import version_sort
 from .check import do_check
 from .see import do_see
 from .create import do_create
@@ -30,7 +13,7 @@ def dow():
     sp = p.add_subparsers(title='commands', dest='command')
 
     see = sp.add_parser('see')
-    see.add_argument('dist', help='distribution name')
+    see.add_argument('dist_or_path', help='distribution name or path to a project')
 
     update = sp.add_parser('update')
     update.add_argument('file', help='file with requirements')

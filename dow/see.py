@@ -1,11 +1,34 @@
+from os.path import exists
+from os import chdir, getcwd
+from os.path import abspath
 from .dist import Dist
+from .prj import Prj
 from .printf import printe
 from .version import version_sort
 
 
 def do_see(args):
-    d = Dist(args.dist)
+    if exists(args.dist_or_path):
+        do_see_prj(args.dist_or_path)
+    else:
+        do_see_dist(args.dist_or_path)
 
+
+def do_see_prj(path):
+    src_path = abspath(path)
+    old_path = getcwd()
+    chdir(src_path)
+
+    try:
+        p = Prj(True)
+        print("Package: {}".format(p.name))
+        print("Version: {}".format(p.version))
+    finally:
+        chdir(old_path)
+
+
+def do_see_dist(dist):
+    d = Dist(dist)
     do_pip(d)
     do_conda(d)
 

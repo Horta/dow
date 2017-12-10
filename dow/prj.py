@@ -3,6 +3,7 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from distutils.version import StrictVersion
 from glob import glob
+from os import getcwd
 from os.path import exists, join, basename
 from hashlib import sha256
 
@@ -12,7 +13,7 @@ from git.exc import InvalidGitRepositoryError
 from setuptools import find_packages
 
 from .internet import check_url, extract_urls, internet_content
-from .printf import printe, printg
+from .printf import printe
 from .setupcfg import Setupcfg
 from .version import is_canonical, version_sort
 
@@ -56,8 +57,8 @@ class Prj(object):
         data['doc/conf.py'] = check_get_files(['doc/conf.py'])
 
         if self._pkgname is not None:
-            data['_test.py'] = check_get_files(
-                [join(self._pkgname, '_test.py')])
+            data['testit.py'] = check_get_files(
+                [join(self._pkgname, 'testit.py')])
 
         data['requirements.txt'] = check_get_files(['requirements.txt'])
         data['test-requirements.txt'] = check_get_files(
@@ -79,7 +80,6 @@ class Prj(object):
         for ext in ['py', 'rst', 'md', 'txt', 'cfg']:
             files += glob("./**/*.%s" % ext, recursive=True)
 
-        tasks = ()
         self._broken_urls = self._pool.map(_extract_urls, files, chunksize=10)
 
     def check_confpy(self):
@@ -99,12 +99,12 @@ class Prj(object):
             return
 
         _check_uptodate_file(self._data['conftest.py'])
-    
+
     def check_testpy(self):
-        if self._data['_test.py'] is None:
+        if self._data['testit.py'] is None:
             return
 
-        _check_uptodate_file(self._data['_test.py'])
+        _check_uptodate_file(self._data['testit.py'])
 
     def check_urls(self):
         for urls in self._broken_urls:
@@ -157,6 +157,13 @@ class Prj(object):
             return None
 
         return _get_init_variable(self._pkgname, 'version')
+
+    @property
+    def name(self):
+        if self._pkgname is None:
+            return None
+
+        return _get_init_variable(self._pkgname, 'name')
 
     def check_version(self):
 
@@ -226,7 +233,7 @@ class Prj(object):
     def _check_package_exists(self):
         pkgs = find_packages()
         if len(pkgs) == 0:
-            printe("No Python package could be found at %s." % here())
+            printe("No Python package could be found at %s." % getcwd())
 
         self._pkgname = pkgs[0]
 
