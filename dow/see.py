@@ -1,9 +1,9 @@
-from os.path import exists
 from os import chdir, getcwd
-from os.path import abspath
+from os.path import abspath, exists
+
 from .dist import Dist
-from .prj import Prj
 from .printf import printe
+from .prj import Prj
 from .version import version_sort
 
 

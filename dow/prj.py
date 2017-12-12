@@ -3,9 +3,9 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from distutils.version import StrictVersion
 from glob import glob
-from os import getcwd
-from os.path import exists, join, basename
 from hashlib import sha256
+from os import getcwd
+from os.path import basename, exists, join
 
 import rstcheck
 from git import Repo
@@ -29,7 +29,7 @@ def _check_uptodate_file(filename):
 
     if hash_ != latest_hash:
         printe("%s file is not up-to-date." % filename +
-               " Please, download it from %s." % url)
+               " Please, download it from\n  <%s>." % url)
 
 
 def _extract_urls(filename):
@@ -114,7 +114,8 @@ class Prj(object):
             print('\n'.join('  ' + u for u in urls[1]))
 
     def check_pep8(self):
-        p = subprocess.run(['pep8', '.'], stdout=subprocess.PIPE)
+        cmdlist = ['pycodestyle', '.', '--exclude=.eggs,.ropeproject']
+        p = subprocess.run(cmdlist, stdout=subprocess.PIPE)
         if p.returncode != 0:
             printe('PEP8 violations:')
             msg = p.stdout.decode().strip()
